@@ -54,7 +54,7 @@ else
 		# Remove unnecessary and empty entries from the launch configuration JSON and fill up with latest AMI ID
 		cat /tmp/$LC_NAME.json | \
 			jq 'walk(if type == "object" then with_entries(select(.value != null and .value != "" and .value != [] and .value != {} and .value != [""] )) else . end )' | \
-			jq 'del(.CreatedTime, .LaunchConfigurationARN)' | \
+			jq 'del(.CreatedTime, .LaunchConfigurationARN, .BlockDeviceMappings)' | \
 			jq ".ImageId = \"$AMI_ID\" | .LaunchConfigurationName = \"$NEW_LC_NAME\"" > /tmp/$NEW_LC_NAME.json
 	
 		# Create new launch configuration with new name
