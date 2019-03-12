@@ -77,9 +77,6 @@ else
                 # Resetting aws binary alias
                 unalias aws
 				break
-			else
-				echo "AMI Creation Failed. Check AWS Console."
-				exit 1
 			fi
 			sleep 15
 		done
