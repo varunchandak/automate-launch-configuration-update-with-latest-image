@@ -2,8 +2,8 @@
 
 # This script will do the following (in order):
 #	- Get a list of instances running inside the autoscaling group
-#	- Create an AMI of the particular instance and store AMI ID
-#	- fetch the launch configuration name to an autoscaling group (passed as parameter to script)
+#	- Create an AMI of any random instance and store AMI ID. Alternatively, pass the instance ID to use that instance instead of any random.
+#	- fetch the launch configuration name to an autoscaling group (ASG passed as parameter to script)
 #	- create a new launch configuration with the updated image
 #	- Assign the Launch Configuration to the existing Auto Scaling Group (ASG)
 #	- Removal of old Launch Configurations (commented for now)
@@ -17,7 +17,7 @@ usage() {
 	echo "See the README HERE: https://github.com/varunchandak/aws-scripts/tree/master/automate-launch-configuration-update-with-latest-image"
 }
 
-if [ "$#" -ne 3 ]; then
+if [ "$#" -ne 3 ] || [ "$#" -ne 4 ]; then
 	usage
 else
 	# export AWS PROFILES
@@ -27,6 +27,9 @@ else
 
 	# Enter ASG Name
 	export ASG_NAME="$3"
+
+	# Enter Instance ID, if selecting a specific instance
+	export INSTANCE_ID="$4"
 
 	# Initializing Logic:
 	# Setting aws binary location alias with profile parameter
@@ -38,9 +41,14 @@ else
 	export LC_NAME="$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names $ASG_NAME --output text --query 'AutoScalingGroups[].LaunchConfigurationName')"
 	export NEW_LC_NAME="$(echo $LC_NAME | awk -F- 'sub(FS $NF,x)')"-"$DATETODAY"
 
-	# Get 1 random instance ID from the list of instances running under ASG_NAME
-	export RANDOM_INST_ID="$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names $ASG_NAME --output text --query 'AutoScalingGroups[].Instances[?HealthStatus==`Healthy`].InstanceId' | tr -s '\t' '\n' | shuf -n 1)"
-
+	if [ ! -z "$INSTANCE_ID" ]; then
+		echo "Using $INSTANCE_ID instead of random instance."
+		export RANDOM_INST_ID="$INSTANCE_ID"
+	else
+		# Get 1 random instance ID from the list of instances running under ASG_NAME
+		echo "Using any random instance from $ASG_NAME ASG."
+		export RANDOM_INST_ID="$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names $ASG_NAME --output text --query 'AutoScalingGroups[].Instances[?HealthStatus==`Healthy`].InstanceId' | tr -s '\t' '\n' | shuf -n 1)";
+	fi
 	if [ -z "$RANDOM_INST_ID" ]; then
 		echo "No instances running in this ASG; Quitting"
 		exit 1
