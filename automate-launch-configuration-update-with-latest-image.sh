@@ -17,7 +17,8 @@ usage() {
 	echo "See the README HERE: https://github.com/varunchandak/aws-scripts/tree/master/automate-launch-configuration-update-with-latest-image"
 }
 
-if [ "$#" -ne 3 ] || [ "$#" -ne 4 ]; then
+
+if [ "$#" -ne 3  ] && [ "$#" -ne 4 ]; then
 	usage
 else
 	# export AWS PROFILES
@@ -56,37 +57,43 @@ else
 		# Create AMI from the Instance without reboot
 		export AMI_ID="$(aws ec2 create-image --instance-id $RANDOM_INST_ID --name "$ASG_NAME"-"$DATETODAY" --output text --no-reboot)"
 		
-		# Wait for image to complete
-		while true; do
-			export AMI_STATE="$(aws ec2 describe-images --region "$AWS_REGION" --filters Name=image-id,Values="$AMI_ID" --query 'Images[*].State')"
-			if [ "$AMI_STATE" == "available" ]; then
-				# Extract existing launch configuration
-				aws autoscaling describe-launch-configurations --launch-configuration-names "$LC_NAME" --output json --query 'LaunchConfigurations[0]' > /tmp/"$LC_NAME".json
-
-				# Remove unnecessary and empty entries from the launch configuration JSON and fill up with latest AMI ID
-				cat /tmp/"$LC_NAME".json | \
-					jq 'walk(if type == "object" then with_entries(select(.value != null and .value != "" and .value != [] and .value != {} and .value != [""] )) else . end )' | \
-					jq 'del(.CreatedTime, .LaunchConfigurationARN, .BlockDeviceMappings)' | \
-					jq ".ImageId = \"$AMI_ID\" | .LaunchConfigurationName = \"$NEW_LC_NAME\"" > /tmp/"$NEW_LC_NAME".json
-
-				# Create new launch configuration with new name
-                if [ -z "$(jq .UserData /tmp/$LC_NAME.json --raw-output)" ]; then
-                	aws autoscaling create-launch-configuration --cli-input-json file:///tmp/"$NEW_LC_NAME".json
-                else
-                	aws autoscaling create-launch-configuration --cli-input-json file:///tmp/"$NEW_LC_NAME".json --user-data file://<(jq .UserData /tmp/$NEW_LC_NAME.json --raw-output | base64 --decode)
-                fi
-
-                # Update autoscaling group with new launch configuration
-                aws autoscaling update-auto-scaling-group --auto-scaling-group-name "$ASG_NAME" --launch-configuration-name "$NEW_LC_NAME"
-
-                # Delete old launch configuration
-                #aws autoscaling delete-launch-configuration --launch-configuration-name "$LC_NAME_OLD"
-
-                # Resetting aws binary alias
-                unalias aws
-				break
-			fi
-			sleep 15
-		done
+		if [ ! -z "$AMI_ID" ]; then
+			# Wait for image to complete
+			while true; do
+				export AMI_STATE="$(aws ec2 describe-images --region "$AWS_REGION" --filters Name=image-id,Values="$AMI_ID" --query 'Images[*].State')"
+				if [ "$AMI_STATE" == "available" ]; then
+					# Extract existing launch configuration
+					aws autoscaling describe-launch-configurations --launch-configuration-names "$LC_NAME" --output json --query 'LaunchConfigurations[0]' > /tmp/"$LC_NAME".json
+	
+					# Remove unnecessary and empty entries from the launch configuration JSON and fill up with latest AMI ID
+					cat /tmp/"$LC_NAME".json | \
+						jq 'walk(if type == "object" then with_entries(select(.value != null and .value != "" and .value != [] and .value != {} and .value != [""] )) else . end )' | \
+						jq 'del(.CreatedTime, .LaunchConfigurationARN, .BlockDeviceMappings)' | \
+						jq ".ImageId = \"$AMI_ID\" | .LaunchConfigurationName = \"$NEW_LC_NAME\"" > /tmp/"$NEW_LC_NAME".json
+	
+					# Create new launch configuration with new name
+	                if [ -z "$(jq .UserData /tmp/$LC_NAME.json --raw-output)" ]; then
+	                	aws autoscaling create-launch-configuration --cli-input-json file:///tmp/"$NEW_LC_NAME".json
+	                else
+	                	aws autoscaling create-launch-configuration --cli-input-json file:///tmp/"$NEW_LC_NAME".json --user-data file://<(jq .UserData /tmp/$NEW_LC_NAME.json --raw-output | base64 --decode)
+	                fi
+	
+	                # Update autoscaling group with new launch configuration
+	                aws autoscaling update-auto-scaling-group --auto-scaling-group-name "$ASG_NAME" --launch-configuration-name "$NEW_LC_NAME"
+	
+	                # Delete old launch configuration (only for automation purposes)
+	                #aws autoscaling delete-launch-configuration --launch-configuration-name "$LC_NAME_OLD"
+	
+	                # Resetting aws binary alias
+	                unalias aws
+					break
+				fi
+				echo "AMI creation still under progress. Retrying in 15 seconds..."
+				sleep 15
+			done
+		else
+			echo "Error creating AMI"
+			exit 1
+		fi
 	fi
 fi
