@@ -75,7 +75,7 @@ else
 					if [ -z "$(jq .UserData /tmp/$LC_NAME.json --raw-output)" ]; then
 						aws autoscaling create-launch-configuration --cli-input-json file:///tmp/"$NEW_LC_NAME".json
 					else
-						aws autoscaling create-launch-configuration --cli-input-json file:///tmp/"$NEW_LC_NAME".json --user-data file://<(jq .UserData /tmp/$NEW_LC_NAME.json --raw-output | base64 --decode)
+						aws autoscaling create-launch-configuration --cli-input-json file:///tmp/"$NEW_LC_NAME".json --user-data file://<(jq .UserData /tmp/"$NEW_LC_NAME".json --raw-output | base64 --decode)
 					fi
 
 					# Update autoscaling group with new launch configuration
