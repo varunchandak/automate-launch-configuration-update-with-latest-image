@@ -27,6 +27,7 @@ This script will do the following (in order):
 ---
 
 ## NOTES:
-
+* Before running the script on OSX, make sure to install `gawk` under `/usr/local/bin/` and `gdate` under `/usr/local/bin/` folders.
+* `jq` version > 1.6 required.
 * When you change the launch configuration for your Auto Scaling group, any new instances are launched using the new configuration parameters, but existing instances are not affected. This is the default configuration.
 * **RUN THIS ON TEST ENVIRONMENT FIRST. I AM NOT RESPONSIBLE FOR ANY UNINTENDED DAMAGE.**
