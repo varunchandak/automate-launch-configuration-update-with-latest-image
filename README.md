@@ -1,3 +1,11 @@
+This repo is being archived due to deprecation of Launch Configurations by AWS. **Use at your own risk.**
+
+* https://aws.amazon.com/blogs/compute/amazon-ec2-auto-scaling-will-no-longer-add-support-for-new-ec2-features-to-launch-configurations/
+
+![image](https://user-images.githubusercontent.com/18713091/204757661-eb6e9909-b669-45df-aa5c-8521db5e5b73.png)
+
+---
+
 # Auto update ASG with latest image and launch configuration
 
 ## Usage:
